@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from simple_salesforce import Salesforce, SFType, SalesforceLogin
+from simple_salesforce.exceptions import SalesforceMalformedRequest, SalesforceResourceNotFound
 
 class SalesforceConnection:
     def __init__(self, login_info_path, login_is_path:bool=True) -> None:
@@ -93,7 +94,140 @@ class SalesforceConnection:
             return pd.DataFrame(list_values, columns=['picklist_values'])
         except IndexError:
             return None
+        
+class SalesforceFunctions:
+    '''
+    Esta clase tiene funciones genéricas que sirven para en (?)
+    '''
+    def __init__(self, sfc:SalesforceConnection) -> None:
+        self.sfc = sfc
 
+    def change_values(self, df:pd.DataFrame, sf_field:str, verbose:bool=False, print_every:int=1, object_type:str='Account') -> list:
+        '''
+        Esta función recibe un dataframe con índices (salesforce ids) y un solo valor
+        sf_field es el nombre del field en salesforce que se quiere cambiar
+
+        Regresa una lista con los valores que no se haya podido actualizar
+        '''
+        sfc = self.sfc
+
+        i = 1
+        errors = []
+        for row in df.itertuples():
+            sf_id, value = row
+            try:
+                sfc.update_record(object_type, sf_id, {sf_field:value})
+            except SalesforceMalformedRequest as e:
+                if verbose: 
+                    print(f'Request is malformed {sf_id}')
+                errors.append(row)
+            except SalesforceResourceNotFound:
+                if verbose: print(f'Id not found: {sf_id}')
+                errors.append(row)
+            if verbose and i % print_every == 0: print(f'{i}/{df.size}')
+            i += 1
+        return errors
+
+    def change_multiple_values(self, df:pd.DataFrame, verbose:bool=False, print_every:int=1, object_type:str='Account') -> list:
+        '''
+        Esta función recibe un dataframe con índices (salesforce ids) y columnas correspondientes a los campos a cambiar
+        
+        :param df: dataframe con formato especificado
+
+        :return: lista con errores
+        '''
+        sfc = self.sfc
+        dictionary = df.transpose().to_dict()
+        i = 1
+        errors = []
+        for sf_id, data_dict in dictionary.items():
+            try:
+                sfc.update_record(object_type, sf_id, data_dict)
+            except SalesforceMalformedRequest as e:
+                if verbose: 
+                    print(f'Malformed Request for {sf_id}')
+                    print(e)
+                errors.append(sf_id)
+            except SalesforceResourceNotFound:
+                if verbose: print(f'Id not found: {sf_id}')
+                errors.append(sf_id)
+            if verbose and i % print_every == 0: print(f'{i}/{df.shape[0]}')
+            i += 1
+        return errors
+
+    def add_related_records(self, df:pd.DataFrame, add_type:str, related_index_name:str, constant_values:dict=None, verbose:bool=True, print_every:int=1) -> list:
+        '''
+        Esta función sirve para crear nuevos registros de objetos que estén relacionados con otro objeto.
+        IMPORTANTE: NO VERIFICA QUE EXISTAN DUPLICADOS
+
+        :param df: dataframe con los datos del nuevo objeto con el siguiente formato:
+            - index -> el salesforce id del objeto relacionado
+            - columnas -> los parámetros del nuevo objeto. Los nombres de las columnas deben coincidir con aquellos de sf
+        :param add_type: el tipo de objeto a crear
+        :param related_index_name: el nombre del id identificador del objeto relacioando. Eg. AccountId, Account__c, account__c
+        :param constant_values: variables que sean iguales para todos los nuevos objetos. Eg. {'type_address__c':'Warehouse'}
+        
+        :return: lista con los errores encontrados
+
+        Eg. add_related_records(sfc, df, add_type='address__c', related_index_name='Account__c', constant_values={'type_address__c':'Warehouse'})
+        '''
+        sfc = self.sfc
+        if print_every <= 0: print_every = 1
+        columns = df.columns
+        i = 1
+        errors = []
+        for row in df.itertuples():
+            
+            # Creamos el diccionario para crear el nuevo objeto
+            sf_index = row[0]
+            data_dict = {related_index_name:sf_index}
+            if constant_values is not None: data_dict.update(constant_values)
+            
+            for index, column in enumerate(columns, start=1):
+                data_dict[column] = row[index]
+        
+            try:
+                sfc.add_record(add_type, data_dict)
+            except SalesforceMalformedRequest as e:
+                if verbose: print(e)
+                errors.append(row)
+            except SalesforceResourceNotFound:
+                if verbose: print(f'Could not find {index}')
+                errors.append(row)
+            if verbose and i % print_every == 0: print(f'{i}/{df.shape[0]}')
+            i += 1
+        return errors
+
+    def add_multiple_records(self, df:pd.DataFrame, add_type:str, verbose:bool=False, print_every:int=1) -> list:
+        '''
+        Esta función sirve para dar de alta múltiples registros a la vez desde un dataframe de pandas.
+
+        :param df: dataframe con un registro por fila; los nombres de las columnas deben coincidir con los nombres de la api de salesforce
+        :param add_type: el tipo de objeto del cual se crearán nuevos registros
+
+        :return: lista con errores
+        '''
+        sfc = self.sfc
+        if print_every <= 0: print_every = 1
+            
+        i = 1
+        errors = []
+        aux_dict = df.transpose().to_dict()
+        
+        for _, data_dict in aux_dict.items():
+            try:
+                sfc.add_record(add_type, data_dict)
+            except SalesforceMalformedRequest as e:
+                if verbose: 
+                    print(f'Malformed Request for {data_dict}')
+                    print(e)
+                errors.append(data_dict)
+            except SalesforceResourceNotFound:
+                if verbose: print(f'Id not found: {data_dict}')
+                errors.append(data_dict)
+            if verbose and i % print_every == 0: print(f'{i}/{df.shape[0]}')
+            i += 1
+        return errors
 
         
 
