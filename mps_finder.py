@@ -96,7 +96,7 @@ class MPsFinder:
         mps = self.__execute_query_in_sf(
             query='queries/mps_names.sql',
             is_path=True,
-            rename_output={'Id':'mp_id', 'Name':'mp_name'}
+            rename_output={'Id':'mp_id', 'Name':'mp_name', 'Account_Status__c':'status', 'supply_chain_category__c':'mp_type', 'global_score__c':'score'}
         )
 
         docs_on_interval = self.__load_docs_on_interval(interval_days=interval_days)
@@ -104,7 +104,7 @@ class MPsFinder:
         mps = (
             mps
             .merge(docs_on_interval, on='mp_id', how='left')
-            .fillna(0)
+            .fillna({'quotes':0, 'wos':0})
             .astype({'quotes':int, 'wos':int})
         )
 
@@ -199,7 +199,7 @@ class MPsFinder:
 
         return db
 
-    def filter_mps(self, products:list, state:str, show_region_mps:bool, show_quotes:bool, show_wos:bool) -> pd.DataFrame:
+    def filter_mps(self, products:list, state:str, show_region_mps:bool, show_quotes:bool, show_wos:bool, show_status:bool, show_type:bool, show_score:bool) -> pd.DataFrame:
         '''
         Esta función busca los mps que hagan match con los filtros especificados.
 
@@ -211,6 +211,9 @@ class MPsFinder:
         pivot_index = ['mp_name']
         if show_quotes: pivot_index.append('quotes')
         if show_wos: pivot_index.append('wos')
+        if show_status: pivot_index.append('status')
+        if show_type: pivot_index.append('mp_type')
+        if show_score: pivot_index.append('score')
     
         if not show_region_mps:
             search_result = (
@@ -269,9 +272,9 @@ class MPsFinder:
             .__execute_query_in_sf(query)
             .dropna(subset=['Phone', 'MobilePhone', 'Email', 'Title'], how='all')
             .rename({'AccountId':'mp_id'}, axis=1)
-            .merge(self.__mps, on='mp_id')
+            .merge(self.__mps[['mp_id', 'mp_name']], on='mp_id')
             .set_index('mp_name')
-            .drop(['mp_id', 'quotes', 'wos'], axis=1)
+            .drop(['mp_id'], axis=1)
             .dropna(axis=1, how='all')
         )
 
