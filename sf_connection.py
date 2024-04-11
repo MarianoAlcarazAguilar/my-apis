@@ -4,23 +4,34 @@ from simple_salesforce import Salesforce, SFType, SalesforceLogin
 from simple_salesforce.exceptions import SalesforceMalformedRequest, SalesforceResourceNotFound
 
 class SalesforceConnection:
-    def __init__(self, login_info_path, login_is_path:bool=True) -> None:
+    def __init__(self, login_info_path=None, login_is_path:bool=True, default_login:bool=True) -> None:
         """
         :param login_info_path: path to login information in json format with username, password, security_token and domain values
         :param login_is_path: wether or not login credentials is a path to a json file or a json already. Useful for streamlit applications.
         """
-        if login_is_path:
-            with open(login_info_path, 'r') as f:
-                login_info = json.load(f)
+        if not default_login:
+            if login_is_path:
+                with open(login_info_path, 'r') as f:
+                    login_info = json.load(f)
+            else:
+                login_info = login_info_path
+
+            username = login_info["username"]
+            password = login_info["password"]
+            security_token = login_info["security_token"]
+            domain = login_info["domain"]
+
+            self.__session_id, self.__instance, self.__sf = self.__create_salesforce_connection(username, password, security_token, domain)
         else:
-            login_info = login_info_path
+            self.__DEFAULT_CREDENTIALS_JSON = 'templates/default_sf_credentials.json'
+            with open(self.__DEFAULT_CREDENTIALS_JSON, 'r') as f:
+                login_info = json.load(f)
 
-        username = login_info["username"]
-        password = login_info["password"]
-        security_token = login_info["security_token"]
-        domain = login_info["domain"]
-
-        self.__session_id, self.__instance, self.__sf = self.__create_salesforce_connection(username, password, security_token, domain)
+            self.__session_id = login_info["session_id"]
+            self.__instance = login_info["instance"]
+            self.__sf = Salesforce(**login_info)
+            
+            
 
     def __create_salesforce_connection(self, username:str, password:str, security_token:str, domain:str):
         """
