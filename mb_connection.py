@@ -4,15 +4,30 @@ import requests
 import pandas as pd
 
 class MetabaseConnection:
-    def __init__(self, login_credentials, new_login:bool=False, login_is_path:bool=True) -> None:
+    def __init__(self, login_credentials, new_login:bool=False) -> None:
         '''
         :param login_credentials: path to login information in json format with username, password of metabase.
         :param login_is_path: wether or not login credentials is a path to json file or it's a json already.
             This is useful when using credential that were loaded in a streamlit application.
         '''
-        self.METABASE_DOMAIN = "https://prima.metabaseapp.com"
-        self.SESSION_ID=self.__get_session_token(login_credentials, new_login, login_is_path)
-        self.headers = {'X-Metabase-Session': self.SESSION_ID}
+        # Intentamos leer los datos (suponiendo que nos dan un json que hay que leer)
+        try:
+            with open(login_credentials, 'r') as f:
+                login_info = json.load(f)
+            login_is_path = True
+        except:
+            login_info = login_credentials
+            login_is_path = False
+
+        self.METABASE_DOMAIN = login_info['metabase_domain']
+        use_api_key = 'api_key' in login_info.keys()
+
+        if use_api_key:
+            self.SESSION_ID = login_info['api_key']
+            self.headers = {'x-api-key':self.SESSION_ID}
+        else:
+            self.SESSION_ID=self.__get_session_token(login_credentials, new_login, login_is_path)
+            self.headers = {'X-Metabase-Session': self.SESSION_ID}
 
     def __get_session_token(self, login_credentials, new_login:bool, login_is_path:bool):
         '''
@@ -41,7 +56,6 @@ class MetabaseConnection:
         if login_is_path:
             with open(login_credentials, 'w') as file:
                 json.dump(login_info, file)
-            
             
         return session_id
 
