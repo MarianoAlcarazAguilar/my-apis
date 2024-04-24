@@ -6,9 +6,7 @@ from simple_salesforce.exceptions import SalesforceMalformedRequest, SalesforceR
 class SalesforceConnection:
     def __init__(self, login_info) -> None:
         """
-        :param login_with_credentials: if true it uses username and password to log in
-        :param login_info: login information in json format or dictionary with one of the next combination of keys: [usuario, contraseña, token] or [session_id, instance]
-        :param login_is_path: wether or not login credentials is a path to a json file or a json already. Useful for streamlit applications.
+        :param login_info: información para hacer login, ya sea diccionario, json o path to json file
         """
         # Se tienen los datos para hacer login
         # Y hay dos opciones: nos dan [usuario, contraseña, token] o nos dan [session_id e instance]
