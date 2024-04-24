@@ -234,27 +234,25 @@ class SalesforceFunctions:
             i += 1
         return errors
 
-        
+    def get_record_type_id(self, sobject:str, record_type_name:str):
+        '''
+        Encontrar el record type id con base en el nombre del objeto dueño y del nombre que tiene
 
-if __name__ == "__main__":
-    sf = SalesforceConnection(".login.json")
+        :param sfc: conexión exitosa a Salesforce
+        :param sobject: el tipo de objeto que se busca. Eg. Account, Prouct2, address__c
+        :param record_type_name: el nombre del record type. Eg. Manufacturing, Raw Materials Partner
 
-    # Extraemos los datos de los MPs
-    query = """
-        select Id, Name, Account_Status__c
-        from Account
-    """
-    extracted_data = sf.extract_data(query)
-
-    # Creamos un nuevo registro
-    data = {"Name":"Mariano created this and should be deleted"}
-    response = sf.add_record("Account", data)
-    created_id = response.get("id")
-
-    # Actualizamos el registro
-    update_data = {"Email__c":"mariano@mail.com"}
-    response = sf.update_record("Account", created_id, update_data)
-
-    # Eliminamos el registro
-    sf.delete_record("Account", created_id)
+        :return: el id o None, dependiendo si se encuntra o no
+        '''
+        sfc = self.__sfc
+        try:
+            query = f'''
+            select Id
+            from RecordType
+            where SobjectType = '{sobject}' and Name = '{record_type_name}'
+            '''
+            rt_id = sfc.extract_data(query).Id[0]
+            return rt_id
+        except IndexError:
+            return None
     
