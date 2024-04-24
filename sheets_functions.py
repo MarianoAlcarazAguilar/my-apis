@@ -18,26 +18,26 @@ class SheetsFunctions:
         self.__SHEET_NAME = sheet_name # Este se puede poner después con base en las que haya disponibles
 
         self.__credentials = self.__load_credentials(credentials, token)
-        self.__gc = gspread.authorzie(self.__credentials)
+        self.__gc = gspread.authorize(self.__credentials)
 
         try:
-            self.wb = self.__gc.open_by_url(self.__SPREADSHEET_ID)
+            self.__wb = self.__gc.open_by_url(self.__SPREADSHEET_ID)
         except gspread.exceptions.NoValidUrlKeyFound:
-            self.wb = self.__gc.open_by_key(self.__SPREADSHEET_ID)            
+            self.__wb = self.__gc.open_by_key(self.__SPREADSHEET_ID)            
 
 
         if self.__SHEET_NAME is not None:
-            self.ws = self.wb.worksheet(self.__SHEET_NAME)
+            self.__ws = self.__wb.worksheet(self.__SHEET_NAME)
         
     def get_sheetnames(self) -> list:
         '''
         Regresa una lista con los nombres de las hojas disponilbes en el workbook
         '''
-        return self.wb.worksheets()
+        return self.__wb.worksheets()
     
     def set_sheetname(self, sheet_name:str) -> None:
         self.__SHEET_NAME = sheet_name
-        self.ws = self.wb.worksheet(self.__SHEET_NAME)
+        self.__ws = self.__wb.worksheet(self.__SHEET_NAME)
     
     def __load_credentials(self, credentials_path:str, token_path:str) -> Credentials:
         '''
@@ -76,7 +76,7 @@ class SheetsFunctions:
 
         return self.__ws.update([df.columns.values.tolist()] + df.values.tolist())
     
-    def add_record(self, data:dict, index:bool=False) -> dict:
+    def add_record(self, data:dict, index:bool=False) -> None:
         '''
         Esta función agrega un record a los ya existentes.
         Las columnas de data deben coincidir con las que haya en el archivo
@@ -96,9 +96,10 @@ class SheetsFunctions:
             .concat((current_data, pd.DataFrame([data])), ignore_index=True)
             .replace({np.NaN:None})
         )
-        return self.write_dataframe(new_data, index)
+        
+        self.write_dataframe(new_data, index)
     
-    def modify_record(self, id:dict, values:dict) -> dict:
+    def modify_record(self, id:dict, values:dict) -> None:
         '''
         Esta función modifica los registros que hagan match con el id especificado.
 
@@ -125,7 +126,7 @@ class SheetsFunctions:
             df.loc[index, col_name] = value
 
         # Guardamos la nueva tabla
-        return self.write_dataframe(df, False)
+        self.write_dataframe(df, False)
 
 
     
