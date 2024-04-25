@@ -98,6 +98,35 @@ class SheetsFunctions:
         )
         
         self.write_dataframe(new_data, index)
+
+    def add_multiple_records(self, data:pd.DataFrame, index:bool=False, drop_duplicates:list=None) -> None:
+        '''
+        Esta función agrega múltiples registros provenientes de un dataframe
+
+        :param data: dataframe a agregar al final de los registros actuales}
+        :param index: si se agrega o no el índice del dataframe que se pasó
+        '''
+        if index:
+            data.reset_index(inplace=True)
+
+        current_data = (
+            pd
+            .DataFrame(self.__ws.get_all_records())
+            .replace({'':None})
+        )
+
+        new_data = (
+            pd
+            .concat((current_data, data), ignore_index=True)
+            .replace({np.NaN:None})
+        )
+
+        if drop_duplicates is not None:
+            new_data.drop_duplicates(subset=drop_duplicates, inplace=True, keep='last')
+
+        self.write_dataframe(new_data, index)
+        
+
     
     def modify_record(self, id:dict, values:dict) -> None:
         '''

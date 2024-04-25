@@ -242,7 +242,7 @@ class SalesforceFunctions:
 
         :return: el id o None, dependiendo si se encuntra o no
         '''
-        sfc = self.__sfc
+        sfc = self.sfc
         try:
             query = f'''
             select Id
