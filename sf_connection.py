@@ -1,4 +1,5 @@
 import json
+import collections
 import pandas as pd
 from simple_salesforce import Salesforce, SFType, SalesforceLogin
 from simple_salesforce.exceptions import SalesforceMalformedRequest, SalesforceResourceNotFound
@@ -44,14 +45,35 @@ class SalesforceConnection:
         df = pd.DataFrame(response.get("records")).drop(['attributes'], axis=1)
         return df
     
-    def add_record(self, object_type:str, data:dict):
+    def add_record(self, object_type:str, data:dict, handle_exception:bool=False) -> collections.OrderedDict:
         """
         Esta función se usa para agregar registros a un objeto.
         Es importante entender que en SalesForce los registros son objetos, eg. un MP es un objeto de tipo Account.
+
+        Por ahora no se hace control de la excepción por defecto pues muchas funciones dependen de ello.
+        En un futuro, se espera que sea el funcionamiento por defecto (handle_expeption = True)
+
+        :param object_type: tipo de objeto a crear en Salesforce. Eg. Account, Contact, Product2
+        :param data: diccionario con los campos necesarios para crear el objeto y los que se le quieran agregar
+        :param handle_excpetion: si se quiere cuidar que no haya problemas en la ejecución. Eventualmente este será el funcionamiento por defecto
         """
-        sf_object = SFType(object_type, self.__session_id, self.__instance)
-        response = sf_object.create(data)
-        return response
+        if not handle_exception:
+            sf_object = SFType(object_type, self.__session_id, self.__instance)
+            response = sf_object.create(data)
+            return response
+        else:
+            try:
+                sf_object = SFType(object_type, self.__session_id, self.__instance)
+                response = sf_object.create(data)
+            except SalesforceMalformedRequest as error:
+                response = collections.OrderedDict({
+                    'errors':[error.content[0]['message']],
+                    'id':None,
+                    'success':False
+                })
+            return response
+
+        
     
     def delete_record(self, object_type:str, record_id:str):
         """
