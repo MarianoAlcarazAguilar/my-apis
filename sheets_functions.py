@@ -34,6 +34,19 @@ class SheetsFunctions:
         Regresa una lista con los nombres de las hojas disponilbes en el workbook
         '''
         return self.__wb.worksheets()
+
+    def get_current_data(self) -> pd.DataFrame:
+        '''
+        Esta función extrae la información contenida actualmente en el sheets.
+
+        :return: pd.DataFrame con el contenido, sustitye '' por None
+        '''
+        current_data = (
+            pd
+            .DataFrame(self.__ws.get_all_records())
+            .replace({'':None})
+        )
+        return current_data
     
     def set_sheetname(self, sheet_name:str) -> None:
         self.__SHEET_NAME = sheet_name
@@ -85,11 +98,7 @@ class SheetsFunctions:
         :param data: diccionario de la forma {col_name:value}
         '''
         # Leemos el contenido actual de la hoja
-        current_data = (
-            pd
-            .DataFrame(self.__ws.get_all_records())
-            .replace({'':None})
-        )
+        current_data = self.get_current_data()
 
         new_data = (
             pd
@@ -109,11 +118,7 @@ class SheetsFunctions:
         if index:
             data.reset_index(inplace=True)
 
-        current_data = (
-            pd
-            .DataFrame(self.__ws.get_all_records())
-            .replace({'':None})
-        )
+        current_data = self.get_current_data()
 
         new_data = (
             pd
