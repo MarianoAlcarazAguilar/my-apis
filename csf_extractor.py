@@ -3,8 +3,8 @@ import unicodedata
 from PIL import Image
 from bs4 import BeautifulSoup
 from pyzbar.pyzbar import decode
-from pdf2image import convert_from_bytes
 from playwright.sync_api import sync_playwright
+from pdf2image import convert_from_bytes, convert_from_path
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 class InformationExtractor:
@@ -20,7 +20,7 @@ class InformationExtractor:
         '''
         self.information = None
 
-    def process_pdf(self, pdf:UploadedFile) -> dict:
+    def process_pdf(self, pdf:UploadedFile, from_path:bool=False) -> dict:
         '''
         Esta funcón implementa todos los pasos necesarios para pasar de un pdf que el usuario
         haya subido hasta un diccionario que contenga la información extraida.
@@ -29,7 +29,7 @@ class InformationExtractor:
 
         :return: diccionario con la información extraida de la constancia
         '''
-        img = self.__convert_pdf_to_image(pdf)
+        img = self.__convert_pdf_to_image(pdf, from_path=from_path)
 
         # Convertimos la imagen a un url
         url = self.__get_url_from_csf(img)
@@ -93,14 +93,18 @@ class InformationExtractor:
         return values
 
 
-    def __convert_pdf_to_image(self, pdf:UploadedFile) -> Image:
+    def __convert_pdf_to_image(self, pdf:UploadedFile, from_path:bool=False) -> Image:
         '''
         Esta función convierte el pdf que el usuario subió a una imagen.
 
         :param pdf: UploadedFile de streamlit
+        :param from_path: si se va a leer el archivo desde un path
 
         :return: image
         '''
+        if from_path:
+            return convert_from_path(pdf, dpi=300)[0]
+        
         if not pdf.name.endswith('pdf'):
             raise('File format not supported')
 
