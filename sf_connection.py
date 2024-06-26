@@ -386,12 +386,11 @@ class SalesforceFunctions:
         :param how_join: {'inner', 'left', 'right', None}. Si es None, regresa las tablas completas sin juntar
         :return: dataframe con las conexiones especificadas
         '''
-        sfc = self.sfc
-        source_id_name, source_data = self.__build_df(sfc, dictionary['source'])
+        source_id_name, source_data = self.__build_df(dictionary['source'])
 
         if 'related' not in dictionary: return source_data 
         
-        dfs = [self.__build_df(sfc, relation, source_id_name) for relation in dictionary['related']]
+        dfs = [self.__build_df(relation, source_id_name) for relation in dictionary['related']]
 
         if how_join is None: return source_data, dfs
         
