@@ -356,7 +356,7 @@ class SalesforceFunctions:
             output = data
         return output
     
-    def extract_from_specifications(self, specs:dict, how_join:str='left') -> pd.DataFrame:
+    def extract_from_specifications(self, dictionary:dict, how_join:str='left') -> pd.DataFrame:
         '''
         Esta función crea las relaciones necesarias y regresa el dataframe final
         con base en el input del usuario dado en un diccionario con la siguiente
@@ -386,7 +386,6 @@ class SalesforceFunctions:
         :param how_join: {'inner', 'left', 'right', None}. Si es None, regresa las tablas completas sin juntar
         :return: dataframe con las conexiones especificadas
         '''
-        dictionary = specs
         sfc = self.sfc
         source_id_name, source_data = self.__build_df(sfc, dictionary['source'])
 
