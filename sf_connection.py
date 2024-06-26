@@ -1,3 +1,4 @@
+import re
 import json
 import collections
 import pandas as pd
@@ -275,4 +276,127 @@ class SalesforceFunctions:
             return rt_id
         except IndexError:
             return None
+        
+    def __build_query(self, specs:dict) -> str:
+        '''
+        Esta función construye el query para Salesforce a partir de las especificaciones 
+        dadas en un diccionario con la siguiente estructura.
+
+        {
+            'sobject':str,
+            'fields':[lista con strings de los campos a extraer],
+            'filters':[lista con diccionarios de los filtros a aplicar; ver formato de filtros],
+            'relation_field':'str' -> en caso de que sea un objeto relacionado al objeto principal. Debe ir acompañado del param source_id
+        }
+
+        Formato de los filtros:
+        {
+            'kind':uno de los siguientes 'str' o 'num', Para 'str' se agregan comillas al where, para num no se agregan.
+            'field':str, 
+            'condition':str
+        }
+
+        :return: query para ejecutarse en salesforce
+        '''
+        # Agregamos el field relacionado a los fields que hay que extraer en caso de que no venga
+        if 'relation_field' in specs and specs['relation_field'] not in specs['fields']:
+            specs['fields'].append(specs['relation_field'])
+
+        if 'filters' in specs:
+            where_clause = 'where '
+            conds = []
+            for condition in specs['filters']:
+                kind = condition.get('kind')
+                if kind == 'str':
+                    str_con = f"{condition['field']} = '{condition['condition']}'"
+                elif kind == 'num':
+                    str_con = f"{condition['field']} {condition['condition']}"
+                conds.append(str_con)
+            where_clause += ' and '.join(conds)
+        else:
+            where_clause = ''
+
+        query = f'''
+        select Id, {', '.join(specs['fields'])}
+        from {specs['sobject']}
+        {where_clause}
+        '''
+
+        # Regresamos el query terminado
+        return query
     
+    def __build_df(self, specs:dict, source_id_name:str=None) -> pd.DataFrame:
+        '''
+        Esta función ejecuta el query dado y cambia los nombres para que se pueda juntar con
+        los datos del source.
+
+        Si se da relation_field, se tiene que dar source_id_name
+        '''
+        sfc = self.sfc
+        query = self.__build_query(specs)
+
+        # Ejecutamos el query y lo acomodamos como debe de ser con base en los inputs de specs
+        id_name = re.sub('(__s$|__c$)', '', specs['sobject']).replace('__', '_') + '_id'
+        
+        if source_id_name is None:
+            data = (
+                sfc
+                .extract_data(query)
+                .rename({'Id':id_name}, axis=1)
+                .rename(lambda x: re.sub('(__s$|__c$)', '', x.lower()).replace('__', '_'), axis=1)
+            )
+            output = (id_name.lower(), data)
+        else:
+            data = (
+                sfc
+                .extract_data(query)
+                .rename({'Id':id_name, specs['relation_field']:source_id_name}, axis=1)
+                .rename(lambda x: re.sub('(__s$|__c$)', '', x.lower()).replace('__', '_'), axis=1)
+            )
+            output = data
+        return output
+    
+    def extract_from_specifications(self, specs:dict, how_join:str='left') -> pd.DataFrame:
+        '''
+        Esta función crea las relaciones necesarias y regresa el dataframe final
+        con base en el input del usuario dado en un diccionario con la siguiente
+        estructrua:
+
+        Formato de diccionario para build_query:
+
+        {
+            'sobject':str,
+            'fields':[lista con strings de los campos a extraer],
+            'filters':[lista con diccionarios de los filtros a aplicar; ver formato de filtros],
+            'relation_field':'str' -> en caso de que sea un objeto relacionado al objeto principal. Debe ir acompañado del param source_id
+        }
+
+        Formato de los filtros:
+        {
+            'kind':uno de los siguientes 'str' o 'num', Para 'str' se agregan comillas al where, para num no se agregan.
+            'field':str, 
+            'condition':str
+        }
+
+        Formato para el diccionario de specifications
+        {
+            'source':diccionario con las especificaciones de la función de build_query,
+            'related': lista con diccionarios con las mismas especificaciones
+        }
+        :param how_join: {'inner', 'left', 'right', None}. Si es None, regresa las tablas completas sin juntar
+        :return: dataframe con las conexiones especificadas
+        '''
+        dictionary = specs
+        sfc = self.sfc
+        source_id_name, source_data = self.__build_df(sfc, dictionary['source'])
+
+        if 'related' not in dictionary: return source_data 
+        
+        dfs = [self.__build_df(sfc, relation, source_id_name) for relation in dictionary['related']]
+
+        if how_join is None: return source_data, dfs
+        
+        # Y ahora juntamos todos los dfs en uno solo
+        for df in dfs:
+            source_data = source_data.merge(df, on=source_id_name, how=how_join)
+        return source_data
