@@ -25,7 +25,7 @@ class SheetsFunctions:
         except gspread.exceptions.NoValidUrlKeyFound:
             self.__wb = self.__gc.open_by_key(self.__SPREADSHEET_ID)            
 
-
+        self.__ws = None
         if self.__SHEET_NAME is not None:
             self.__ws = self.__wb.worksheet(self.__SHEET_NAME)
         
@@ -35,17 +35,43 @@ class SheetsFunctions:
         '''
         return self.__wb.worksheets()
 
+    def get_worksheet(self) -> gspread.worksheet.Worksheet:
+        '''
+        Esta función regresa el working sheet que se está usando para poder usar todos los 
+        métodos que tenga disponible. Esto es para evitar otros problemas.
+
+        Warning: this might be none
+
+        :return: 
+        '''
+        if self.__ws is None:
+            raise 'No work sheet has been specified'
+        return self.__ws
+        
     def get_current_data(self) -> pd.DataFrame:
         '''
         Esta función extrae la información contenida actualmente en el sheets.
 
         :return: pd.DataFrame con el contenido, sustitye '' por None
         '''
-        current_data = (
-            pd
-            .DataFrame(self.__ws.get_all_records())
-            .replace({'':None})
-        )
+        try:
+            current_data = (
+                pd
+                .DataFrame(self.__ws.get_all_records())
+                .replace({'':None})
+            )
+        except gspread.exceptions.GSpreadException:
+            # Esta exepción ocurre cuando los nombres de las columnas
+            # son iguales, lo que evita que funcione get_all_records()
+            print('Unable to read columns due to duplicity of names')
+
+            current_data = (
+                pd
+                .DataFrame(self.__ws.get_values())
+                .replace({'':None})
+                .dropna(how='all', axis=1)
+                .dropna(how='all', axis=0)
+            )
         return current_data
     
     def set_sheetname(self, sheet_name:str) -> None:

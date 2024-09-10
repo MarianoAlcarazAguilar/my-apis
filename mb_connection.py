@@ -166,18 +166,24 @@ class MetabaseConnection:
         data_list = []
         max_value = min_value
 
+        i = 0
         while 1:
+            print(i)
             new_query = (
                 query
                 .replace(where_clause, f"where {id_col} > '{max_value}'")
                 .replace(order_by_clause, f'order by {id_col}')
             )
             data = self.query_data(new_query, supress_warning=True, database_id=database_id)
+                
+            max_value = data[id_col_df].max()
             data_list.append(data)
 
-            if data.shape[0] < 2_000: break
-
-            max_value = data[id_col_df].max()
+            if data.shape[0] < 2_000: 
+                break
+            
+            print(max_value)
+            i += 1
 
         return pd.concat(data_list, ignore_index=True)
         
