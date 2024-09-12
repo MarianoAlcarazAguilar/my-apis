@@ -63,7 +63,7 @@ class SheetsFunctions:
         except gspread.exceptions.GSpreadException:
             # Esta exepción ocurre cuando los nombres de las columnas
             # son iguales, lo que evita que funcione get_all_records()
-            print('Unable to read columns due to duplicity of names')
+            # print('Unable to read columns due to duplicity of names')
 
             current_data = (
                 pd
