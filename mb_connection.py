@@ -182,7 +182,7 @@ class MetabaseConnection:
             if data.shape[0] < 2_000: 
                 break
             
-            print(max_value)
+            # print(max_value)
             i += 1
 
         return pd.concat(data_list, ignore_index=True)
