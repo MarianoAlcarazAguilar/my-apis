@@ -168,7 +168,7 @@ class MetabaseConnection:
 
         i = 0
         while 1:
-            print(i)
+            # print(i)
             new_query = (
                 query
                 .replace(where_clause, f"where {id_col} > '{max_value}'")
