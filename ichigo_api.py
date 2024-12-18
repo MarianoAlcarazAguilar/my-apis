@@ -307,7 +307,7 @@ class Ichigo:
             for key, value in equivalencias_calibres.items():
                 if val == value:
                     return key
-            return val
+            return val / 10_000
         
         if inverse:
             if type(width) != int:
