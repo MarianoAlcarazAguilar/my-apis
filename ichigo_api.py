@@ -423,7 +423,7 @@ class Ichigo:
 
         dimensions = []
         if thickness and thickness in necessary_values[family]:
-            dimension = {'typeCode': 'Thickness', 'unitCode': None, 'measure': map_width_to_master_code(thickness)}
+            dimension = {'typeCode': 'Thickness', 'unitCode': None, 'measure': self.map_width_to_master_code(thickness)}
             dimensions.append(dimension)
 
         if width_value and width_value in necessary_values[family]:
