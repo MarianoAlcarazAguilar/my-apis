@@ -254,8 +254,9 @@ class Ichigo:
         
     def map_width_to_master_code(
         self,
-        width:str,
-        skip_conversion:bool=False
+        width:str|int,
+        skip_conversion:bool=False,
+        inverse:bool=False
     ) -> int:
         """
         Calibres y espesores en mastercodes tienen un código numérico.
@@ -266,26 +267,8 @@ class Ichigo:
         :param width: espesor o calibre, pueden ser como "1
         :param skip_conversion: si se quiere o no que se omita la conversión de fraction to float
             | es útil cuando se sabe que no hay número en width y solo se quiere encontrar la equivalencia del diccionario
+        :param inverse: if True, returnsn the original width instead of the master code
         """ 
-        def __fraction_to_float(original_value:str) -> str:
-            value = str(original_value)
-            value = value.lower().replace('-', ' ')
-            if 'c' in value: return original_value # para evitar limpiar calibres
-            value = re.sub(r"[^0-9/\. ]", "", value).strip()
-            fractions = [float(Fraction(frac)) for frac in value.split(' ')]
-            return int(sum(fractions) * 10_000)
-            
-        if skip_conversion:
-            master_code = width
-        else:
-            master_code = __fraction_to_float(width)
-        
-        # Si el master_code es igual al width es porque corresponde a un calibre
-        # Y por lo tanto, hacer la conversión tal cual no va a funcionar.
-        if master_code != width: return master_code
-
-        # Si estamos aquí, significa que width es un calibre.
-        # Hay que hacer uso de tabla de conversión.
         equivalencias_calibres = {
             'Cal. 32': 90,
             'Cal. 30': 120,
@@ -319,6 +302,38 @@ class Ichigo:
             'XXS':1, # para cédulas
             'X':5 # para cédulas
         }
+
+        def get_key(val):
+            for key, value in equivalencias_calibres.items():
+                if val == value:
+                    return key
+            return None
+        
+        if inverse:
+            if type(width) != int:
+                raise ValueError('Invalid value for master code')
+            return get_key(width)
+        
+        def __fraction_to_float(original_value:str) -> str:
+            value = str(original_value)
+            value = value.lower().replace('-', ' ')
+            if 'c' in value: return original_value # para evitar limpiar calibres
+            value = re.sub(r"[^0-9/\. ]", "", value).strip()
+            fractions = [float(Fraction(frac)) for frac in value.split(' ')]
+            return int(sum(fractions) * 10_000)
+            
+        if skip_conversion:
+            master_code = width
+        else:
+            master_code = __fraction_to_float(width)
+        
+        # Si el master_code es igual al width es porque corresponde a un calibre
+        # Y por lo tanto, hacer la conversión tal cual no va a funcionar.
+        if master_code != width: return master_code
+
+        # Si estamos aquí, significa que width es un calibre.
+        # Hay que hacer uso de tabla de conversión.
+        
         if width not in equivalencias_calibres:
             raise ValueError(f"Invalid value for width: {width}")
         return equivalencias_calibres[width]
